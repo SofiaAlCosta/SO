@@ -142,3 +142,95 @@ void schedule_rm(Process *list, int count) {
     qsort(list, count, sizeof(Process), compare_priority); // RM assume menor período = maior prioridade
     schedule_fcfs(list, count);
 }
+
+// ---------------------- SJF (Sem preempção) ----------------------
+
+void schedule_sjf(Process *list, int count) {
+    printf("\n--- SJF (Shortest Job First - Non-Preemptive) ---\n");
+
+    if (count <= 0) return;
+
+    int current_time = 0;
+    int completed = 0;
+    int total_waiting = 0, total_turnaround = 0;
+    int total_burst = 0;
+    int last_finish_time = 0;
+    int cpu_idle_time = 0;
+    int initial_start_time = -1;
+
+    int *finished = calloc(count, sizeof(int));
+    for(int i=0; i<count; i++) {
+        list[i].remaining_time = list[i].burst_time;
+        total_burst += list[i].burst_time;
+    }
+
+
+    while (completed < count) {
+        int shortest_idx = -1;
+        int min_burst = INT_MAX;
+
+        for (int i = 0; i < count; i++) {
+            if (!finished[i] && list[i].arrival_time <= current_time) {
+                if (list[i].burst_time < min_burst) {
+                    min_burst = list[i].burst_time;
+                    shortest_idx = i;
+                }
+                else if (list[i].burst_time == min_burst) {
+                    if (shortest_idx == -1 || list[i].arrival_time < list[shortest_idx].arrival_time) {
+                         shortest_idx = i;
+                    }
+                }
+            }
+        }
+
+        if (shortest_idx != -1) {
+            Process *p = &list[shortest_idx];
+
+            if (p->arrival_time > current_time) {
+                 cpu_idle_time += (p->arrival_time - current_time);
+                 current_time = p->arrival_time;
+            }
+
+            if(initial_start_time == -1) initial_start_time = current_time;
+
+            int start = current_time;
+            int finish = start + p->burst_time;
+            int turnaround = finish - p->arrival_time;
+            int waiting = start - p->arrival_time;
+
+            total_turnaround += turnaround;
+            total_waiting += waiting;
+            current_time = finish;
+            last_finish_time = current_time;
+
+            finished[shortest_idx] = 1;
+            completed++;
+
+            printf("P%d Start=%d Finish=%d Wait=%d Turnaround=%d (Burst=%d)\n",
+                   p->id, start, finish, waiting, turnaround, p->burst_time);
+
+        } else {
+            int next_arrival = INT_MAX;
+            for(int i=0; i<count; i++) {
+                if (!finished[i] && list[i].arrival_time < next_arrival) {
+                    next_arrival = list[i].arrival_time;
+                }
+            }
+             if (next_arrival == INT_MAX) break;
+
+            if (next_arrival > current_time) {
+                cpu_idle_time += (next_arrival - current_time);
+                current_time = next_arrival;
+            } else {
+                 current_time++;
+                 cpu_idle_time++;
+            }
+        }
+    }
+
+    free(finished);
+
+     printf("--- Métricas SJF ---\n");
+     printf("Média Espera: %.2f | Média Turnaround: %.2f\n",
+           (float)total_waiting / count, (float)total_turnaround / count);
+}
