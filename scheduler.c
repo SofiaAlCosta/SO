@@ -623,6 +623,124 @@ int find_shortest_remaining_time_process(Process *processes, int count, int *fin
     return best_idx;
 }
 
+// ---------------------- SRTF (Shortest Remaining Time First - SJF preemptivo) ----------------------
+void schedule_srtf(Process *list, int count) {
+    printf("\n--- SRTF (Shortest Remaining Time First - SJF Preemptive) ---\n");
+    if (count <= 0) { printf("Nenhum processo.\n"); return; }
+
+    int current_time = 0;
+    int completed = 0;
+    int total_waiting = 0, total_turnaround = 0, total_burst = 0, deadline_misses = 0;
+    int cpu_idle_time = 0;
+    int last_finish_time = 0;
+    int first_event_time = find_min_arrival_time(list, count);
+     if (first_event_time < 0) first_event_time = 0;
+
+    Process *local_list = malloc(count * sizeof(Process));
+    int *finished = calloc(count, sizeof(int));
+    int *start_exec_time = malloc(count * sizeof(int));
+    if (!local_list || !finished || !start_exec_time) {
+        fprintf(stderr, "Falha memória SRTF\n"); free(local_list); free(finished); free(start_exec_time); return;
+    }
+    for(int i=0; i<count; i++) {
+        local_list[i] = list[i];
+        local_list[i].remaining_time = list[i].burst_time;
+        total_burst += list[i].burst_time;
+        start_exec_time[i] = -1;
+    }
+
+    current_time = first_event_time;
+    if (current_time > 0) cpu_idle_time = current_time;
+
+    printf("Tempo | CPU  | Evento\n");
+    printf("------------------------------------------\n");
+
+    while(completed < count) {
+        int running_idx = find_shortest_remaining_time_process(local_list, count, finished, current_time);
+
+        if (running_idx != -1) {
+            Process *p = &local_list[running_idx];
+            if (start_exec_time[running_idx] == -1) {
+                 start_exec_time[running_idx] = current_time;
+            }
+
+            printf("%-5d | P%-3d | Executa (Resta: %d)\n", current_time, p->id, p->remaining_time - 1);
+            p->remaining_time--;
+            current_time++;
+            last_finish_time = current_time;
+
+            if (p->remaining_time == 0) {
+                finished[running_idx] = 1;
+                completed++;
+                int finish_time = current_time;
+                int turnaround = finish_time - p->arrival_time;
+                int waiting = turnaround - p->burst_time;
+                 if (waiting < 0) waiting = 0;
+
+                total_turnaround += turnaround;
+                total_waiting += waiting;
+
+                printf("%-5d | P%-3d | TERMINOU. Espera=%d, Turnaround=%d\n", current_time, p->id, waiting, turnaround);
+
+                if (p->deadline > 0 && finish_time > p->deadline) {
+                    deadline_misses++;
+                     printf("%-5d | P%-3d | !!! DEADLINE PERDIDO (Terminou: %d, Deadline: %d)\n", current_time, p->id, finish_time, p->deadline);
+                }
+            }
+
+        } else {
+
+             int next_arrival = INT_MAX;
+             for(int i=0; i<count; i++) {
+                 if (!finished[i] && local_list[i].arrival_time > current_time) {
+                     if (local_list[i].arrival_time < next_arrival) {
+                         next_arrival = local_list[i].arrival_time;
+                     }
+                 }
+             }
+
+             if (next_arrival == INT_MAX) {
+                 printf("%-5d | ---- | Ociosa (Fim da simulação?)\n", current_time);
+                 if (completed < count) {
+                      printf("        | AVISO: Simulação terminou mas %d processos não completaram.\n", count - completed);
+                 }
+                 break
+             } else {
+                 printf("%-5d | ---- | Ociosa até t=%d\n", current_time, next_arrival);
+                 cpu_idle_time += (next_arrival - current_time);
+                 current_time = next_arrival;
+             }
+        }
+    }
+     printf("------------------------------------------\n");
+
+    float simulation_duration = (float)(last_finish_time - first_event_time);
+    if (simulation_duration <= 0) simulation_duration = (float)last_finish_time > 0 ? last_finish_time : 1.0f;
+
+    float avg_waiting = (count > 0) ? (float)total_waiting / count : 0;
+    float avg_turnaround = (count > 0) ? (float)total_turnaround / count : 0;
+    float cpu_busy_time = (float)total_burst;
+    float cpu_utilization = (last_finish_time > 0) ? (cpu_busy_time / last_finish_time) * 100.0f : 0;
+    if (cpu_utilization > 100.0f) cpu_utilization = 100.0f;
+    float throughput_total_time = (last_finish_time > 0) ? (float)count / last_finish_time : 0;
+
+    printf("\n--- Métricas SRTF (SJF Preemptive) ---\n");
+    printf("Tempo Total de Simulação (até último evento): %d\n", last_finish_time);
+    printf("Tempo Ocioso da CPU (estimado):            %d\n", cpu_idle_time);
+    printf("Tempo Efetivo da CPU (Soma dos Bursts):    %d\n", total_burst);
+    printf("--------------------------------------------------\n");
+    printf("Média de Tempo de Espera:                  %.2f\n", avg_waiting);
+    printf("Média de Tempo de Turnaround:              %.2f\n", avg_turnaround);
+    printf("Utilização da CPU:                         %.2f %%\n", cpu_utilization);
+    printf("Throughput (procs / tempo total):          %.4f\n", throughput_total_time);
+    printf("Deadlines Perdidos:                        %d\n", deadline_misses);
+    printf("--------------------------------------------------\n");
+
+    free(local_list);
+    free(finished);
+    free(start_exec_time);
+}
+
 // ---------------------- EDF (Preemptive) ----------------------
 void schedule_edf_preemptive(Process *list, int count) {
     printf("\n--- EDF (Earliest Deadline First - Preemptive) ---\n");
