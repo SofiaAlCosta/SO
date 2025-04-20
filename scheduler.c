@@ -603,6 +603,26 @@ int find_highest_priority_process(Process *processes, int count, int *finished_f
     return best_idx;
 }
 
+int find_shortest_remaining_time_process(Process *processes, int count, int *finished_flags, int current_time) {
+    int best_idx = -1;
+    int min_remaining = INT_MAX;
+
+    for (int i = 0; i < count; i++) {
+        if (!finished_flags[i] && processes[i].arrival_time <= current_time && processes[i].remaining_time > 0) {
+            if (processes[i].remaining_time < min_remaining) {
+                min_remaining = processes[i].remaining_time;
+                best_idx = i;
+            }
+            else if (processes[i].remaining_time == min_remaining) {
+                if (best_idx == -1 || processes[i].arrival_time < processes[best_idx].arrival_time) {
+                    best_idx = i;
+                }
+            }
+        }
+    }
+    return best_idx;
+}
+
 // ---------------------- EDF (Preemptive) ----------------------
 void schedule_edf_preemptive(Process *list, int count) {
     printf("\n--- EDF (Earliest Deadline First - Preemptive) ---\n");
