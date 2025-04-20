@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// --- NOVO: Estados do Processo ---
+// --- Estados do Processo ---
 typedef enum {
     STATE_NEW,
     STATE_READY,
@@ -14,7 +14,7 @@ typedef enum {
 } ProcessState;
 
 
-// Estrutura do Processo (PCB) - CAMPOS ADICIONADOS
+// --- Estrutura do Processo (PCB) ---
 typedef struct {
     int id;
     int arrival_time;
@@ -41,6 +41,7 @@ typedef struct {
 
 } Process;
 
+// --- Funções de Geração/Leitura/Inicialização ---
 Process* generate_static_processes(int count);
 
 Process* generate_random_processes(int count, double lambda_arrival, double p1, double p2, int burst_dist_type, int prio_type,
