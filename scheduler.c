@@ -1,20 +1,19 @@
+// scheduler.c
 #include "scheduler.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <limits.h>
-#include <math.h>
-#include <string.h>
+#include <limits.h> // Para INT_MAX
+#include <math.h>   // Para M_PI (se necessário)
+#include <string.h> // Para memset (opcional)
 
 // ------------------------- Utilitários -------------------------
 
-// Comparador para qsort: ordena por tempo de chegada
 int compare_arrival(const void *a, const void *b) {
     Process *p1 = (Process *)a;
     Process *p2 = (Process *)b;
     return p1->arrival_time - p2->arrival_time;
 }
 
-// Comparador para qsort: ordena por prioridade (menor primeiro)
 int compare_priority(const void *a, const void *b) {
     Process *p1 = (Process *)a;
     Process *p2 = (Process *)b;
@@ -24,7 +23,6 @@ int compare_priority(const void *a, const void *b) {
     return p1->priority - p2->priority;
 }
 
-// Comparador para qsort: ordena por deadline (mais próximo primeiro)
 int compare_deadline(const void *a, const void *b) {
     Process *p1 = (Process *)a;
     Process *p2 = (Process *)b;
@@ -34,7 +32,6 @@ int compare_deadline(const void *a, const void *b) {
     return p1->deadline - p2->deadline;
 }
 
-// Função auxiliar para encontrar o tempo de chegada do primeiro processo
 int find_min_arrival_time(Process *list, int count) {
     if (count <= 0) return 0;
     int min_arrival = INT_MAX;
@@ -46,6 +43,43 @@ int find_min_arrival_time(Process *list, int count) {
         }
     }
     return found ? min_arrival : 0;
+}
+
+// --- Funções de Seleção para EDF/RM Preemptivo ---
+int find_earliest_deadline_process(Process *processes, int count, int *finished_flags, int current_time) {
+    int best_idx = -1;
+    int min_deadline = INT_MAX;
+    for (int i = 0; i < count; i++) {
+        if (!finished_flags[i] && processes[i].arrival_time <= current_time && processes[i].remaining_time > 0) {
+            if (processes[i].deadline < min_deadline) {
+                min_deadline = processes[i].deadline;
+                best_idx = i;
+            } else if (processes[i].deadline == min_deadline) {
+                if (best_idx == -1 || processes[i].arrival_time < processes[best_idx].arrival_time) {
+                    best_idx = i;
+                }
+            }
+        }
+    }
+    return best_idx;
+}
+
+int find_highest_priority_process(Process *processes, int count, int *finished_flags, int current_time) {
+    int best_idx = -1;
+    int min_priority = INT_MAX;
+    for (int i = 0; i < count; i++) {
+        if (!finished_flags[i] && processes[i].arrival_time <= current_time && processes[i].remaining_time > 0) {
+             if (processes[i].priority < min_priority) {
+                min_priority = processes[i].priority;
+                best_idx = i;
+            } else if (processes[i].priority == min_priority) {
+                if (best_idx == -1 || processes[i].arrival_time < processes[best_idx].arrival_time) {
+                    best_idx = i;
+                }
+            }
+        }
+    }
+    return best_idx;
 }
 
 
@@ -235,13 +269,14 @@ void schedule_rr(Process *list, int count, int quantum) {
                 printf("%-5d | CPU Ociosa (nenhum processo pronto ou a chegar).\n", current_time);
                  int found_remaining = 0;
                  for(int k=0; k<count; k++) if(remaining[k]>0) found_remaining=1;
-                 if(!found_remaining && completed == count) break; // Normal exit
+                 if(!found_remaining && completed == count) break;
                  if(!found_remaining && completed < count) {
                      printf("        AVISO: Nenhum restante mas nem todos completos!\n");
-                     break;
+                 } else {
+                     current_time++;
+                     cpu_idle_time++;
                  }
-                 current_time++;
-                 cpu_idle_time++;
+                 break;
              } else {
                  printf("%-5d | CPU Ociosa até próxima chegada em t=%d.\n", current_time, next_event_time);
                  cpu_idle_time += (next_event_time - current_time);
@@ -286,7 +321,6 @@ void schedule_rr(Process *list, int count, int quantum) {
 }
 
 // ------------------ Priority Scheduling ------------------
-// TODO: Adicionar cálculo e apresentação das métricas completas
 void schedule_priority(Process *list, int count, int preemptive) {
     printf("\n--- Priority Scheduling (%s) ---\n", preemptive ? "Preemptive" : "Non-Preemptive");
      if (count <= 0) {
@@ -295,7 +329,6 @@ void schedule_priority(Process *list, int count, int preemptive) {
      }
 
     int current_time = 0, completed = 0;
-    // Métricas a calcular
     int total_waiting = 0, total_turnaround = 0, total_burst = 0;
     int deadline_misses = 0, cpu_idle_time = 0, last_finish_time = 0;
     int first_event_time = find_min_arrival_time(list, count);
@@ -303,7 +336,7 @@ void schedule_priority(Process *list, int count, int preemptive) {
 
     int *remaining = malloc(count * sizeof(int));
     Process *local_list = malloc(count * sizeof(Process));
-    int *finish_times = malloc(count * sizeof(int)); // Para guardar tempos finais
+    int *finish_times = malloc(count * sizeof(int));
      if (!remaining || !local_list || !finish_times) {
          fprintf(stderr, "Falha ao alocar memória em Priority\n");
          free(remaining); free(local_list); free(finish_times); return;
@@ -327,7 +360,6 @@ void schedule_priority(Process *list, int count, int preemptive) {
         int idx = -1;
         int min_priority = INT_MAX;
 
-        // Encontrar processo pronto com maior prioridade
         for (int i = 0; i < count; i++) {
             if (local_list[i].arrival_time <= current_time && remaining[i] > 0) {
                 if (local_list[i].priority < min_priority) {
@@ -343,24 +375,20 @@ void schedule_priority(Process *list, int count, int preemptive) {
         }
 
         if (idx != -1) {
-            // Processo selecionado
             int exec_time = 0;
             if (preemptive) {
-                // Preemptivo: Executa por 1 unidade OU até terminar OU até chegar alguém mais prioritário
-                // Simplificação: Executa por 1 unidade
                 exec_time = 1;
             } else {
-                // Não preemptivo: Executa até o fim
                 exec_time = remaining[idx];
             }
-             if (exec_time > remaining[idx]) exec_time = remaining[idx]; // Garante não exceder o restante
+             if (exec_time > remaining[idx]) exec_time = remaining[idx];
 
             printf("%-5d | P%d (Pri: %d) executa por %d unidades (Restam: %d)\n",
                     current_time, local_list[idx].id, local_list[idx].priority, exec_time, remaining[idx] - exec_time);
 
             remaining[idx] -= exec_time;
             current_time += exec_time;
-            last_finish_time = current_time; // Atualiza tempo da última atividade
+            last_finish_time = current_time;
 
             if (remaining[idx] == 0) {
                 completed++;
@@ -378,7 +406,6 @@ void schedule_priority(Process *list, int count, int preemptive) {
                  }
             }
         } else {
-            // Nenhum processo pronto, avançar o tempo para a próxima chegada
              int next_arrival = INT_MAX;
              for(int i=0; i<count; i++) {
                  if(remaining[i] > 0 && local_list[i].arrival_time > current_time) {
@@ -400,7 +427,6 @@ void schedule_priority(Process *list, int count, int preemptive) {
     }
      printf("--------------------------------\n");
 
-     // --- Cálculo e Impressão de Métricas (Priority) ---
     float simulation_duration = (float)(last_finish_time - first_event_time);
     if (simulation_duration <= 0) simulation_duration = (float)last_finish_time > 0 ? last_finish_time : 1.0f;
 
@@ -563,182 +589,6 @@ void schedule_sjf(Process *list, int count) {
     printf("--------------------------------------------------\n");
 
      free(local_list);
-}
-
-
-// --- Funções de Seleção para EDF/RM Preemptivo ---
-int find_earliest_deadline_process(Process *processes, int count, int *finished_flags, int current_time) {
-    int best_idx = -1;
-    int min_deadline = INT_MAX;
-    for (int i = 0; i < count; i++) {
-        if (!finished_flags[i] && processes[i].arrival_time <= current_time && processes[i].remaining_time > 0) {
-            if (processes[i].deadline < min_deadline) {
-                min_deadline = processes[i].deadline;
-                best_idx = i;
-            } else if (processes[i].deadline == min_deadline) {
-                if (best_idx == -1 || processes[i].arrival_time < processes[best_idx].arrival_time) {
-                    best_idx = i;
-                }
-            }
-        }
-    }
-    return best_idx;
-}
-
-int find_highest_priority_process(Process *processes, int count, int *finished_flags, int current_time) {
-    int best_idx = -1;
-    int min_priority = INT_MAX;
-    for (int i = 0; i < count; i++) {
-        if (!finished_flags[i] && processes[i].arrival_time <= current_time && processes[i].remaining_time > 0) {
-             if (processes[i].priority < min_priority) {
-                min_priority = processes[i].priority;
-                best_idx = i;
-            } else if (processes[i].priority == min_priority) {
-                if (best_idx == -1 || processes[i].arrival_time < processes[best_idx].arrival_time) {
-                    best_idx = i;
-                }
-            }
-        }
-    }
-    return best_idx;
-}
-
-int find_shortest_remaining_time_process(Process *processes, int count, int *finished_flags, int current_time) {
-    int best_idx = -1;
-    int min_remaining = INT_MAX;
-
-    for (int i = 0; i < count; i++) {
-        if (!finished_flags[i] && processes[i].arrival_time <= current_time && processes[i].remaining_time > 0) {
-            if (processes[i].remaining_time < min_remaining) {
-                min_remaining = processes[i].remaining_time;
-                best_idx = i;
-            }
-            else if (processes[i].remaining_time == min_remaining) {
-                if (best_idx == -1 || processes[i].arrival_time < processes[best_idx].arrival_time) {
-                    best_idx = i;
-                }
-            }
-        }
-    }
-    return best_idx;
-}
-
-// ---------------------- SRTF (Shortest Remaining Time First - SJF preemptivo) ----------------------
-void schedule_srtf(Process *list, int count) {
-    printf("\n--- SRTF (Shortest Remaining Time First - SJF Preemptive) ---\n");
-    if (count <= 0) { printf("Nenhum processo.\n"); return; }
-
-    int current_time = 0;
-    int completed = 0;
-    int total_waiting = 0, total_turnaround = 0, total_burst = 0, deadline_misses = 0;
-    int cpu_idle_time = 0;
-    int last_finish_time = 0;
-    int first_event_time = find_min_arrival_time(list, count);
-     if (first_event_time < 0) first_event_time = 0;
-
-    Process *local_list = malloc(count * sizeof(Process));
-    int *finished = calloc(count, sizeof(int));
-    int *start_exec_time = malloc(count * sizeof(int));
-    if (!local_list || !finished || !start_exec_time) {
-        fprintf(stderr, "Falha memória SRTF\n"); free(local_list); free(finished); free(start_exec_time); return;
-    }
-    for(int i=0; i<count; i++) {
-        local_list[i] = list[i];
-        local_list[i].remaining_time = list[i].burst_time;
-        total_burst += list[i].burst_time;
-        start_exec_time[i] = -1;
-    }
-
-    current_time = first_event_time;
-    if (current_time > 0) cpu_idle_time = current_time;
-
-    printf("Tempo | CPU  | Evento\n");
-    printf("------------------------------------------\n");
-
-    while(completed < count) {
-        int running_idx = find_shortest_remaining_time_process(local_list, count, finished, current_time);
-
-        if (running_idx != -1) {
-            Process *p = &local_list[running_idx];
-            if (start_exec_time[running_idx] == -1) {
-                 start_exec_time[running_idx] = current_time;
-            }
-
-            printf("%-5d | P%-3d | Executa (Resta: %d)\n", current_time, p->id, p->remaining_time - 1);
-            p->remaining_time--;
-            current_time++;
-            last_finish_time = current_time;
-
-            if (p->remaining_time == 0) {
-                finished[running_idx] = 1;
-                completed++;
-                int finish_time = current_time;
-                int turnaround = finish_time - p->arrival_time;
-                int waiting = turnaround - p->burst_time;
-                 if (waiting < 0) waiting = 0;
-
-                total_turnaround += turnaround;
-                total_waiting += waiting;
-
-                printf("%-5d | P%-3d | TERMINOU. Espera=%d, Turnaround=%d\n", current_time, p->id, waiting, turnaround);
-
-                if (p->deadline > 0 && finish_time > p->deadline) {
-                    deadline_misses++;
-                     printf("%-5d | P%-3d | !!! DEADLINE PERDIDO (Terminou: %d, Deadline: %d)\n", current_time, p->id, finish_time, p->deadline);
-                }
-            }
-
-        } else {
-
-             int next_arrival = INT_MAX;
-             for(int i=0; i<count; i++) {
-                 if (!finished[i] && local_list[i].arrival_time > current_time) {
-                     if (local_list[i].arrival_time < next_arrival) {
-                         next_arrival = local_list[i].arrival_time;
-                     }
-                 }
-             }
-
-             if (next_arrival == INT_MAX) {
-                 printf("%-5d | ---- | Ociosa (Fim da simulação?)\n", current_time);
-                 if (completed < count) {
-                      printf("        | AVISO: Simulação terminou mas %d processos não completaram.\n", count - completed);
-                 }
-                 break
-             } else {
-                 printf("%-5d | ---- | Ociosa até t=%d\n", current_time, next_arrival);
-                 cpu_idle_time += (next_arrival - current_time);
-                 current_time = next_arrival;
-             }
-        }
-    }
-     printf("------------------------------------------\n");
-
-    float simulation_duration = (float)(last_finish_time - first_event_time);
-    if (simulation_duration <= 0) simulation_duration = (float)last_finish_time > 0 ? last_finish_time : 1.0f;
-
-    float avg_waiting = (count > 0) ? (float)total_waiting / count : 0;
-    float avg_turnaround = (count > 0) ? (float)total_turnaround / count : 0;
-    float cpu_busy_time = (float)total_burst;
-    float cpu_utilization = (last_finish_time > 0) ? (cpu_busy_time / last_finish_time) * 100.0f : 0;
-    if (cpu_utilization > 100.0f) cpu_utilization = 100.0f;
-    float throughput_total_time = (last_finish_time > 0) ? (float)count / last_finish_time : 0;
-
-    printf("\n--- Métricas SRTF (SJF Preemptive) ---\n");
-    printf("Tempo Total de Simulação (até último evento): %d\n", last_finish_time);
-    printf("Tempo Ocioso da CPU (estimado):            %d\n", cpu_idle_time);
-    printf("Tempo Efetivo da CPU (Soma dos Bursts):    %d\n", total_burst);
-    printf("--------------------------------------------------\n");
-    printf("Média de Tempo de Espera:                  %.2f\n", avg_waiting);
-    printf("Média de Tempo de Turnaround:              %.2f\n", avg_turnaround);
-    printf("Utilização da CPU:                         %.2f %%\n", cpu_utilization);
-    printf("Throughput (procs / tempo total):          %.4f\n", throughput_total_time);
-    printf("Deadlines Perdidos:                        %d\n", deadline_misses);
-    printf("--------------------------------------------------\n");
-
-    free(local_list);
-    free(finished);
-    free(start_exec_time);
 }
 
 // ---------------------- EDF (Preemptive) ----------------------
@@ -972,7 +822,8 @@ void schedule_rm_preemptive(Process *list, int count) {
     free(start_exec_time);
 }
 
-// ------------------------ EDF (Simplista - Não Preemptivo por default) ------------------------
+
+// ------------------------ EDF (Simplista - Não Preemptivo) ------------------------
 void schedule_edf(Process *list, int count) {
     printf("\n--- EDF (Implementação Simplista: Ordena por Deadline + FCFS) ---\n");
      if (count <= 0) {
@@ -993,9 +844,9 @@ void schedule_edf(Process *list, int count) {
     free(local_list);
 }
 
-// ------------------ Rate Monotonic (Simplista - Não Preemptivo por default) ------------------
+// ------------------ Rate Monotonic (Simplista - Não Preemptivo) ------------------
 void schedule_rm(Process *list, int count) {
-    printf("\n--- Rate Monotonic (Implementação Simplista: Chama Priority Scheduling) ---\n");
+    printf("\n--- Rate Monotonic (Implementação Simplista: Chama Priority Scheduling NP) ---\n");
      if (count <= 0) {
          printf("Nenhum processo para escalonar.\n");
          return;

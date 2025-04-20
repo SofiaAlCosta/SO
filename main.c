@@ -9,12 +9,13 @@ void print_usage() {
     printf("Uso: ./probsched [opções]\n");
     printf("Opções:\n");
     printf("  -h, --help          Mostrar esta ajuda\n");
-    printf("  -a <algoritmo>      Algoritmo (fcfs, sjf, srtf, rr, prio-np, prio-p, edf, rm) (padrão: fcfs)\n");
+    printf("  -a <algoritmo>      Algoritmo (fcfs, sjf, rr, prio-np, prio-p, edf, rm) (padrão: fcfs)\n");
+    printf("                      (Nota: edf/rm usam implementações preemptivas por padrão aqui)\n");
     printf("  -n <numero>         Número de processos a gerar (padrão: 5)\n");
     printf("  -q <quantum>        Time quantum para Round Robin (padrão: 4)\n");
     printf("  -s <semente>        Semente para gerador aleatório (padrão: baseado no tempo)\n");
     printf("  --gen <modo>        Modo de geração: 'static' ou 'random' (padrão: random)\n");
-    printf("  (Exemplo: --lambda 0.5 --mean 8 --stddev 3)\n");
+    printf("  (Exemplo: --lambda 0.5 --mean 8 --stddev 3) <-- Não implementado ainda\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -83,8 +84,8 @@ int main(int argc, char *argv[]) {
                  fprintf(stderr, "Erro: Flag --gen requer um argumento ('static' ou 'random').\n");
                  return 1;
             }
-
-        } else {
+        }
+        else {
             fprintf(stderr, "Erro: Opção desconhecida '%s'\n", argv[i]);
             print_usage();
             return 1;
@@ -123,7 +124,6 @@ int main(int argc, char *argv[]) {
                process_list[i].burst_time,
                process_list[i].priority,
                process_list[i].deadline);
-
         process_list[i].remaining_time = process_list[i].burst_time;
     }
      printf("--------------------------------------------\n");
@@ -132,8 +132,6 @@ int main(int argc, char *argv[]) {
         schedule_fcfs(process_list, num_processes);
     } else if (strcmp(algorithm, "sjf") == 0) {
         schedule_sjf(process_list, num_processes);
-    } else if (strcmp(algorithm, "srtf") == 0) {
-        schedule_srtf(process_list, num_processes);
     } else if (strcmp(algorithm, "rr") == 0) {
         schedule_rr(process_list, num_processes, quantum);
     } else if (strcmp(algorithm, "prio-np") == 0) {
@@ -141,11 +139,12 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(algorithm, "prio-p") == 0) {
         schedule_priority(process_list, num_processes, 1);
     } else if (strcmp(algorithm, "edf") == 0) {
-        schedule_edf_preemptive(process_list, num_processes);
+        schedule_edf_preemptive(process_list, num_processes); 
     } else if (strcmp(algorithm, "rm") == 0) {
         schedule_rm_preemptive(process_list, num_processes);
     } else {
         fprintf(stderr, "Erro: Algoritmo '%s' desconhecido ou não implementado.\n", algorithm);
+
         free(process_list);
         return 1;
     }
