@@ -22,6 +22,17 @@ int compare_deadline(const void *a, const void *b) {
     return p1->deadline - p2->deadline;
 }
 
+//Tempo de início da simulaçãoo
+int find_min_arrival_time(Process *list, int count) {
+    if (count <= 0) return 0;
+    int min_arrival = list[0].arrival_time;
+    for (int i = 1; i < count; i++) {
+        if (list[i].arrival_time < min_arrival) {
+            min_arrival = list[i].arrival_time;
+        }
+    }
+    return min_arrival;
+}
 // ---------------------- FCFS ----------------------
 
 void schedule_fcfs(Process *list, int count) {
