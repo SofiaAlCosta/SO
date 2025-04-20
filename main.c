@@ -73,10 +73,21 @@ int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) { print_usage(); return 0; }
         else if (strcmp(argv[i], "-a") == 0) { if (++i < argc) strncpy(algorithm, argv[i], sizeof(algorithm)-1); else { fprintf(stderr, "Erro: Faltando argumento para -a\n"); return 1;} }
-        else if (strcmp(argv[i], "-n") == 0) { if (++i < argc) num_processes = atoi(argv[i]); if(num_processes<=0) num_processes=1; else { fprintf(stderr, "Erro: Faltando argumento para -n\n"); return 1;} }
+        else if (strcmp(argv[i], "-n") == 0) { if (++i < argc) num_processes = atoi(argv[i]); if(num_processes<=0) { fprintf(stderr,"Aviso: Numero de processos inválido '%s', usando N=1.\n", argv[i]); num_processes=1;} else { /* OK */ } } // Check error properly
         else if (strcmp(argv[i], "-f") == 0) { if (++i < argc) strncpy(input_filename, argv[i], sizeof(input_filename)-1); else { fprintf(stderr, "Erro: Faltando argumento para -f\n"); return 1;} }
         else if (strcmp(argv[i], "-t") == 0) { if (++i < argc) max_simulation_time = atoi(argv[i]); else { fprintf(stderr, "Erro: Faltando argumento para -t\n"); return 1;} }
-        else if (strcmp(argv[i], "-q") == 0) { if (++i < argc) quantum = atoi(argv[i]); if (quantum <=0) quantum=1; else { fprintf(stderr, "Erro: Faltando argumento para -q\n"); return 1;} }
+        else if (strcmp(argv[i], "-q") == 0) { // --- CORRIGIDO PARSING DO -q ---
+            if (++i < argc) {
+                quantum = atoi(argv[i]);
+                if (quantum <= 0) {
+                    fprintf(stderr, "Aviso: Quantum inválido '%s', usando quantum=1.\n", argv[i]);
+                    quantum = 1;
+                }
+            } else {
+                fprintf(stderr, "Erro: Faltando argumento para -q\n");
+                return 1;
+            }
+        } // --- FIM DA CORREÇÃO DO -q ---
         else if (strcmp(argv[i], "-s") == 0) { if (++i < argc) { seed = atoi(argv[i]); use_fixed_seed = 1; } else { fprintf(stderr, "Erro: Faltando argumento para -s\n"); return 1;} }
         else if (strcmp(argv[i], "--gen") == 0) { if (++i < argc) strncpy(generation_mode, argv[i], sizeof(generation_mode)-1); else { fprintf(stderr, "Erro: Faltando argumento para --gen\n"); return 1;} }
         else if (strcmp(argv[i], "--burst-dist") == 0) {
@@ -177,6 +188,7 @@ int main(int argc, char *argv[]) {
         free(process_list);
         return 1;
     }
+
 
     // --- Limpeza ---
     free(process_list);

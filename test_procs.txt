@@ -1,0 +1,7 @@
+# (Exemplo com variedade de chegadas, bursts, prioridades, deadlines e IO)
+# ID Arriv Burst Prio Dead Period IODur
+1  0     7     3    20   0      3
+2  2     4     1    10   0      0
+3  4     1     4    15   0      5
+4  5     4     2    18   0      0
+5  8     5     5    30   0      2
