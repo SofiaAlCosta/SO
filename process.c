@@ -90,5 +90,69 @@ Process* generate_random_processes(int count, double lambda, double mean, double
         list[i].period = 0;
     }
 
+    // --- Leitura de Processos de Ficheiro ---
+Process* read_processes_from_file(const char* filename, int* count_ptr) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Erro ao abrir ficheiro de processos");
+        *count_ptr = 0;
+        return NULL;
+    }
+
+    int count = 0;
+    char buffer[256];
+
+    while (fgets(buffer, sizeof(buffer), file)) {
+        if (buffer[0] == '\n' || buffer[0] == '\r' || buffer[0] == '#') {
+            continue;
+        }
+        int id, arr, bur, pri, dead, per;
+        if (sscanf(buffer, "%d %d %d %d %d %d", &id, &arr, &bur, &pri, &dead, &per) == 6) {
+             count++;
+        } else {
+            fprintf(stderr, "Aviso: Linha mal formatada ignorada no ficheiro: %s", buffer);
+        }
+    }
+
+    if (count == 0) {
+        fprintf(stderr, "Erro: Nenhum processo válido encontrado no ficheiro '%s'\n", filename);
+        fclose(file);
+        *count_ptr = 0;
+        return NULL;
+    }
+
+    Process* list = malloc(sizeof(Process) * count);
+    if (!list) {
+        fprintf(stderr, "Erro: Falha ao alocar memória para ler processos do ficheiro\n");
+        fclose(file);
+        *count_ptr = 0;
+        return NULL;
+    }
+
+    rewind(file);
+    int current_process_index = 0;
+    while (fgets(buffer, sizeof(buffer), file) && current_process_index < count) {
+         if (buffer[0] == '\n' || buffer[0] == '\r' || buffer[0] == '#') {
+            continue;
+        }
+        int id, arr, bur, pri, dead, per;
+        if (sscanf(buffer, "%d %d %d %d %d %d", &id, &arr, &bur, &pri, &dead, &per) == 6) {
+            list[current_process_index].id = id;
+            list[current_process_index].arrival_time = arr;
+            list[current_process_index].burst_time = (bur > 0) ? bur : 1;
+            list[current_process_index].remaining_time = list[current_process_index].burst_time;
+            list[current_process_index].priority = pri;
+            list[current_process_index].deadline = dead;
+            list[current_process_index].period = per;
+            current_process_index++;
+        }
+    }
+
+    fclose(file);
+    *count_ptr = count;
+    printf("Lidos %d processos do ficheiro '%s'.\n", count, filename);
+    return list;
+}
+
     return list;
 }

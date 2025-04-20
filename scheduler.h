@@ -3,13 +3,13 @@
 
 #include "process.h"
 
-void schedule_fcfs(Process *list, int count);
-void schedule_rr(Process *list, int count, int quantum);
-void schedule_priority(Process *list, int count, int preemptive);
-void schedule_sjf(Process *list, int count);
-void schedule_edf_preemptive(Process *list, int count);
-void schedule_rm_preemptive(Process *list, int count);
-void schedule_edf(Process *list, int count);
-void schedule_rm(Process *list, int count); 
+void schedule_fcfs(Process *list, int count, int max_simulation_time);
+void schedule_rr(Process *list, int count, int quantum, int max_simulation_time);
+void schedule_priority(Process *list, int count, int preemptive, int max_simulation_time);
+void schedule_sjf(Process *list, int count, int max_simulation_time);
+void schedule_edf_preemptive(Process *list, int count, int max_simulation_time);
+void schedule_rm_preemptive(Process *list, int count, int max_simulation_time);
+void schedule_edf(Process *list, int count, int max_simulation_time);
+void schedule_rm(Process *list, int count, int max_simulation_time);
 
-#endif 
+#endif

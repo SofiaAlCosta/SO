@@ -21,4 +21,7 @@ Process* generate_static_processes(int count);
 // Geração de processos aleatórios com distribuições probabilísticas (nova assinatura)
 Process* generate_random_processes(int count, double lambda, double mean, double stddev);
 
+// Leitura de processos de um ficheiro
+Process* read_processes_from_file(const char* filename, int* count);
+
 #endif
