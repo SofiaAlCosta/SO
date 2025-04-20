@@ -6,19 +6,19 @@
 
 // Estrutura do Processo (PCB)
 typedef struct {
-    int id;               // Identificador único do processo
-    int arrival_time;     // Tempo de chegada
-    int burst_time;       // Tempo total de execução necessário
-    int remaining_time;   // Tempo restante de execução (para preempção)
-    int priority;         // Prioridade (quanto menor, maior prioridade)
-    int deadline;         // Deadline absoluto (para EDF)
-    int period;           // Período (para Rate Monotonic)
+    int id;
+    int arrival_time;
+    int burst_time;
+    int remaining_time;
+    int priority;
+    int deadline;
+    int period;
 } Process;
 
-// Geração de processos estáticos (valores fixos aleatórios)
+// Geração de processos estáticos
 Process* generate_static_processes(int count);
 
-// Geração de processos aleatórios com distribuições probabilísticas
-Process* generate_random_processes(int count, int max_arrival, int max_burst);
+// Geração de processos aleatórios com distribuições probabilísticas (nova assinatura)
+Process* generate_random_processes(int count, double lambda, double mean, double stddev);
 
-#endif // PROCESS_H
+#endif
