@@ -4,7 +4,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// Estrutura do Processo (PCB)
+// --- NOVO: Estados do Processo ---
+typedef enum {
+    STATE_NEW,
+    STATE_READY,
+    STATE_RUNNING,
+    STATE_BLOCKED,
+    STATE_TERMINATED
+} ProcessState;
+
+
+// Estrutura do Processo (PCB) - CAMPOS ADICIONADOS
 typedef struct {
     int id;
     int arrival_time;
@@ -13,15 +23,30 @@ typedef struct {
     int priority;
     int deadline;
     int period;
+
+    // --- Campos para Métricas e Estado ---
+    int start_time;
+    int finish_time;
+    int waiting_time;
+    int turnaround_time;
+
+    // --- Campos para Funcionalidades Avançadas ---
+    ProcessState state;
+    int current_priority;
+    int time_in_ready_queue;
+    int io_burst_duration;
+    int io_completion_time;
+    int current_queue;
+    int time_slice_remaining;
+
 } Process;
 
-// Geração de processos estáticos
 Process* generate_static_processes(int count);
 
-// Geração de processos aleatórios com distribuições probabilísticas (nova assinatura)
-Process* generate_random_processes(int count, double lambda, double p1, double p2, int burst_dist_type, int prio_type);
+Process* generate_random_processes(int count, double lambda_arrival, double p1, double p2, int burst_dist_type, int prio_type,
+                                   double io_chance, int min_io_duration, int max_io_duration);
 
-// Leitura de processos de um ficheiro
-Process* read_processes_from_file(const char* filename, int* count);
+Process* read_processes_from_file(const char* filename, int* count_ptr);
+void initialize_process_state(Process *p);
 
 #endif
