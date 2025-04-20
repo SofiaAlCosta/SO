@@ -9,22 +9,25 @@ void print_usage() {
     printf("Uso: ./probsched [opções]\n");
     printf("Opções:\n");
     printf("  -h, --help          Mostrar esta ajuda\n");
-    printf("  -a <algoritmo>      Algoritmo a usar (fcfs, sjf, rr, prio-np, prio-p, edf, rm) (padrão: fcfs)\n");
+    printf("  -a <algoritmo>      Algoritmo (fcfs, sjf, srtf, rr, prio-np, prio-p, edf, rm) (padrão: fcfs)\n");
     printf("  -n <numero>         Número de processos a gerar (padrão: 5)\n");
     printf("  -q <quantum>        Time quantum para Round Robin (padrão: 4)\n");
     printf("  -s <semente>        Semente para gerador aleatório (padrão: baseado no tempo)\n");
     printf("  --gen <modo>        Modo de geração: 'static' ou 'random' (padrão: random)\n");
+    printf("  (Exemplo: --lambda 0.5 --mean 8 --stddev 3)\n");
 }
 
 int main(int argc, char *argv[]) {
 
-    // --- Valores Padrão ---
     char algorithm[20] = "fcfs";
     int num_processes = 5;
     int quantum = 4;
     int seed = time(NULL);
     int use_fixed_seed = 0;
     char generation_mode[10] = "random";
+    double lambda_exp = 0.5;
+    double mean_norm = 8.0;
+    double stddev_norm = 3.0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
@@ -80,6 +83,7 @@ int main(int argc, char *argv[]) {
                  fprintf(stderr, "Erro: Flag --gen requer um argumento ('static' ou 'random').\n");
                  return 1;
             }
+
         } else {
             fprintf(stderr, "Erro: Opção desconhecida '%s'\n", argv[i]);
             print_usage();
@@ -87,7 +91,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // --- Inicialização e Geração ---
     printf("--- Simulador ProbSched ---\n");
     printf("Configuração: Algoritmo=%s, Processos=%d, Quantum(RR)=%d, Geração=%s, Semente=%s%d\n",
            algorithm, num_processes, quantum, generation_mode,
@@ -100,8 +103,9 @@ int main(int argc, char *argv[]) {
         printf("A gerar %d processos estáticos...\n", num_processes);
         process_list = generate_static_processes(num_processes);
     } else {
-         printf("A gerar %d processos aleatórios...\n", num_processes);
-         process_list = generate_random_processes(num_processes, 10, 8);
+         printf("A gerar %d processos aleatórios (L=%.2f, M=%.1f, SD=%.1f)...\n",
+                num_processes, lambda_exp, mean_norm, stddev_norm);
+         process_list = generate_random_processes(num_processes, (int)mean_norm, (int)stddev_norm);
     }
 
      if (process_list == NULL) {
@@ -119,21 +123,23 @@ int main(int argc, char *argv[]) {
                process_list[i].burst_time,
                process_list[i].priority,
                process_list[i].deadline);
+
         process_list[i].remaining_time = process_list[i].burst_time;
     }
      printf("--------------------------------------------\n");
 
-    // --- Seleção e Execução do Algoritmo ---
     if (strcmp(algorithm, "fcfs") == 0) {
         schedule_fcfs(process_list, num_processes);
     } else if (strcmp(algorithm, "sjf") == 0) {
         schedule_sjf(process_list, num_processes);
+    } else if (strcmp(algorithm, "srtf") == 0) {
+        schedule_srtf(process_list, num_processes);
     } else if (strcmp(algorithm, "rr") == 0) {
         schedule_rr(process_list, num_processes, quantum);
     } else if (strcmp(algorithm, "prio-np") == 0) {
-        schedule_priority(process_list, num_processes, 0); // 0 = Non-Preemptive
+        schedule_priority(process_list, num_processes, 0);
     } else if (strcmp(algorithm, "prio-p") == 0) {
-        schedule_priority(process_list, num_processes, 1); // 1 = Preemptive
+        schedule_priority(process_list, num_processes, 1);
     } else if (strcmp(algorithm, "edf") == 0) {
         schedule_edf_preemptive(process_list, num_processes);
     } else if (strcmp(algorithm, "rm") == 0) {
