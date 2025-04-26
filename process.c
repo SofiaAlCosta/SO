@@ -10,7 +10,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// --- Função auxiliar para inicializar ---
 void initialize_process_state(Process *p) {
     p->remaining_time = p->burst_time;
     p->start_time = -1;
@@ -47,7 +46,6 @@ double rand_normal(double mean, double stddev) {
     return z * stddev + mean;
 }
 
-// --- Geração de processos estáticos ---
 Process* generate_static_processes(int count) {
     if (count <= 0) return NULL;
     Process* list = malloc(sizeof(Process) * count);
@@ -69,7 +67,6 @@ Process* generate_static_processes(int count) {
     return list;
 }
 
-// --- Geração de processos aleatórios ---
 Process* generate_random_processes(int count, double lambda_arrival, double p1, double p2, int burst_dist_type, int prio_type,
                                    double io_chance, int min_io_duration, int max_io_duration) {
     if (count <= 0) return NULL;
@@ -136,7 +133,6 @@ Process* generate_random_processes(int count, double lambda_arrival, double p1, 
 }
 
 
-// --- Leitura de processos de um ficheiro ---
 Process* read_processes_from_file(const char* filename, int* count_ptr) {
     FILE *file = fopen(filename, "r");
     if (!file) {

@@ -4,8 +4,6 @@
 #include <limits.h>
 #include <string.h>
 
-
-// --- Funções de Comparação ---
 int compare_arrival(const void *a, const void *b) {
     Process *p1 = (Process *)a;
     Process *p2 = (Process *)b;
@@ -30,7 +28,6 @@ int compare_deadline(const void *a, const void *b) {
     return p1->deadline - p2->deadline;
 }
 
-// --- Funções Auxiliares ---
 int find_min_arrival_time(Process *list, int count) {
     int min_arrival = INT_MAX;
     int found = 0;
@@ -98,7 +95,6 @@ int find_shortest_job_process_ready(Process *processes, int count, int current_t
     return best_idx;
 }
 
-// --- Função Aging ---
 void apply_aging(Process *list, int count, int current_time) {
     for (int i = 0; i < count; i++) {
         if (list[i].state == STATE_READY && list[i].current_priority > 1) {
@@ -115,14 +111,12 @@ void apply_aging(Process *list, int count, int current_time) {
     }
 }
 
-// --- Função Check I/O Completions ---
 int check_io_completions(Process *list, int count, int current_time) {
     int moved_count = 0;
     for (int i = 0; i < count; i++) {
         if (list[i].state == STATE_BLOCKED && current_time >= list[i].io_completion_time) {
             printf("        I/O Complete: P%d at time %d\n", list[i].id, current_time);
 
-            // ✅ Se o processo já terminou a execução (remaining_time == 0), finaliza-o
             if (list[i].remaining_time <= 0) {
                 printf("        P%d TERMINOU após I/O\n", list[i].id);
                 list[i].state = STATE_TERMINATED;
@@ -139,7 +133,6 @@ int check_io_completions(Process *list, int count, int current_time) {
     return moved_count;
 }
 
-// --- Função Check New Arrivals ---
 int check_new_arrivals(Process *list, int count, int current_time) {
      int arrived_count = 0;
     for (int i = 0; i < count; i++) {
@@ -158,7 +151,6 @@ int check_new_arrivals(Process *list, int count, int current_time) {
     return arrived_count;
 }
 
-// --- Função Calculate Final Metrics ---
 void calculate_final_metrics(Process *list, int count, int final_time, int total_idle_time, int total_context_switches) {
     long long total_waiting = 0;
     long long total_turnaround = 0;
@@ -174,10 +166,9 @@ void calculate_final_metrics(Process *list, int count, int final_time, int total
         int missed = 0;
         char start_str[6], finish_str[7], wait_str[5], turn_str[7];
 
-        if (list[i].state == STATE_TERMINATED || list[i].finish_time != -1) { // Check finish_time too
+        if (list[i].state == STATE_TERMINATED || list[i].finish_time != -1) {
             status_str = "Completo";
-            // Only count towards averages if truly completed CPU burst at least once
-            if (list[i].finish_time != -1) { // Use finish_time as completion marker
+            if (list[i].finish_time != -1) {
                 completed_count++;
                 list[i].turnaround_time = list[i].finish_time - list[i].arrival_time;
                 list[i].waiting_time = list[i].turnaround_time - list[i].burst_time;
@@ -192,7 +183,7 @@ void calculate_final_metrics(Process *list, int count, int final_time, int total
                 }
                 snprintf(wait_str, 5, "%d", list[i].waiting_time);
                 snprintf(turn_str, 7, "%d", list[i].turnaround_time);
-            } else { // Should not happen if state is TERMINATED, but as safety
+            } else {
                  strcpy(wait_str, "ERR");
                  strcpy(turn_str, "ERR");
             }
@@ -217,7 +208,7 @@ void calculate_final_metrics(Process *list, int count, int final_time, int total
                list[i].id, list[i].arrival_time, list[i].burst_time, list[i].priority, list[i].deadline,
                list[i].io_burst_duration,
                start_str, finish_str, turn_str, wait_str,
-               (list[i].finish_time != -1) ? (missed ? "NAO" : "Sim") : "-----", // Check completion via finish_time
+               (list[i].finish_time != -1) ? (missed ? "NAO" : "Sim") : "-----",
                status_str, list[i].remaining_time);
     }
     printf("----------------------------------------------------------------------------------------------------------------------\n");
@@ -237,7 +228,7 @@ void calculate_final_metrics(Process *list, int count, int final_time, int total
     printf("Número de Trocas de Contexto:  %d\n", total_context_switches);
     printf("Custo Total Trocas Contexto:   %d\n", total_context_switches * CONTEXT_SWITCH_COST);
     printf("--------------------------------------------------\n");
-    printf("Processos Completos (CPU burst): %d de %d\n", completed_count, count); // Clarified meaning
+    printf("Processos Completos (CPU burst): %d de %d\n", completed_count, count);
     printf("Média Tempo Espera (completos):    %.2f\n", avg_waiting);
     printf("Média Tempo Turnaround (completos):%.2f\n", avg_turnaround);
     printf("Utilização da CPU:             %.2f %%\n", cpu_utilization);
@@ -342,7 +333,6 @@ void schedule_fcfs(Process *list, int count, int max_simulation_time) {
                       (void)check_io_completions(local_list, count, current_time);
                  }
 
-                 // --- FCFS: Verifica fim de execução (CORRIGIDO) ---
                  if (p->remaining_time == 0) {
                      printf("%-5d | P%d TERMINOU CPU Burst\n", current_time, p->id);
                      p->state = STATE_TERMINATED;
@@ -447,7 +437,6 @@ void schedule_rr(Process *list, int count, int quantum, int max_simulation_time)
              int search_start_idx = (last_ready_checked_idx + 1);
              for (int i = 0; i < count; ++i) {
                  int check_idx = (search_start_idx + i) % count;
-                 // Only select processes that haven't finished their CPU work
                  if (local_list[check_idx].state == STATE_READY && local_list[check_idx].finish_time == -1) {
                      next_ready_idx = check_idx;
                      last_ready_checked_idx = check_idx;
@@ -491,7 +480,6 @@ void schedule_rr(Process *list, int count, int quantum, int max_simulation_time)
                 break;
             }
 
-            // Execute one time unit
             current_time++;
             p->remaining_time--;
             p->time_slice_remaining--;
@@ -503,9 +491,9 @@ void schedule_rr(Process *list, int count, int quantum, int max_simulation_time)
 
 
             int process_stopped = 0;
-            if (p->remaining_time == 0) { // Process finished CPU burst
+            if (p->remaining_time == 0) {
                 printf("%-5d | P%d TERMINOU CPU Burst\n", current_time, p->id);
-                p->state = STATE_TERMINATED; // Mark as completed for scheduling
+                p->state = STATE_TERMINATED;
                 p->finish_time = current_time;
                 completed_count++;
 
@@ -514,10 +502,9 @@ void schedule_rr(Process *list, int count, int quantum, int max_simulation_time)
                      p->state = STATE_BLOCKED;
                      p->io_completion_time = current_time + p->io_burst_duration;
                  }
-                 // Stays TERMINATED if no I/O
                 process_stopped = 1;
 
-            } else if (p->time_slice_remaining == 0) { // Quantum expired
+            } else if (p->time_slice_remaining == 0) {
                 printf("%-5d | P%d fim do quantum, volta para READY\n", current_time, p->id);
                  if (p->io_burst_duration > 0 && (rand() % 3 == 0) ) {
                     printf("        P%d iniciando I/O (%d unidades) no fim do quantum\n", p->id, p->io_burst_duration);
@@ -529,23 +516,21 @@ void schedule_rr(Process *list, int count, int quantum, int max_simulation_time)
                 }
                 process_stopped = 1;
             }
-             // Note: I/O check in the middle removed for RR simplicity, happens at end of quantum/burst
 
             if (process_stopped) {
                 current_running_idx = -1;
             }
 
-        } else { // CPU Idle
+        } else {
             int next_event_time = INT_MAX;
             int has_ready_process = 0;
             for (int i = 0; i < count; i++) {
-                 // Check if READY and hasn't finished CPU burst yet
                  if(local_list[i].state == STATE_READY && local_list[i].finish_time == -1) has_ready_process = 1;
                  if (local_list[i].state == STATE_NEW && local_list[i].arrival_time < next_event_time) next_event_time = local_list[i].arrival_time;
                  if (local_list[i].state == STATE_BLOCKED && local_list[i].io_completion_time < next_event_time) next_event_time = local_list[i].io_completion_time;
             }
 
-            if(has_ready_process) continue; // If a process became ready, don't idle
+            if(has_ready_process) continue;
 
              int idle_until;
              if (next_event_time == INT_MAX || (max_simulation_time != -1 && next_event_time >= max_simulation_time)) {
@@ -618,7 +603,6 @@ void schedule_priority(Process *list, int count, int preemptive, int enable_agin
              applied_aging = 1;
         }
 
-        // Find highest priority ready process that hasn't finished CPU burst
         int highest_prio_idx = -1;
         int min_priority = INT_MAX;
         for (int i = 0; i < count; i++) {
@@ -658,7 +642,7 @@ void schedule_priority(Process *list, int count, int preemptive, int enable_agin
                  last_process_id = p->id;
                  printf("%-5d | P%d (Prio: %d) inicia execução (R: %d)\n", current_time, p->id, p->current_priority, p->remaining_time);
 
-            } else { // CPU Busy, check preemption
+            } else {
                  Process *running_p = &local_list[current_running_idx];
                  if (preemptive && highest_prio_idx != current_running_idx &&
                      (next_p->current_priority < running_p->current_priority || (applied_aging && next_p->current_priority < running_p->current_priority)) )
@@ -683,7 +667,6 @@ void schedule_priority(Process *list, int count, int preemptive, int enable_agin
                           (void)check_new_arrivals(local_list, count, current_time); (void)check_io_completions(local_list, count, current_time);
                           if (preemptive && enable_aging && (current_time >= last_aging_check + AGING_INTERVAL)){ apply_aging(local_list, count, current_time); last_aging_check = current_time; }
                           if (max_simulation_time != -1 && current_time >= max_simulation_time) { running_p->state = STATE_READY; current_running_idx = -1; break; }
-                          // Re-check highest priority after CS
                           int current_best_idx = -1; min_priority = INT_MAX;
                            for (int i = 0; i < count; i++) {
                                 if (local_list[i].state == STATE_READY && local_list[i].finish_time == -1 && local_list[i].arrival_time <= current_time) {
@@ -703,32 +686,28 @@ void schedule_priority(Process *list, int count, int preemptive, int enable_agin
                       printf("%-5d | P%d (Prio: %d) inicia execução PREEMPTIVA (R: %d)\n", current_time, p->id, p->current_priority, p->remaining_time);
                  }
             }
-        } else { // No ready processes left that haven't finished CPU burst
+        } else {
             if (current_running_idx != -1) {
                  last_process_id = local_list[current_running_idx].id;
                  current_running_idx = -1;
             }
-            // Check if all processes are accounted for (completed or blocked/new)
              int all_accounted = 1;
              for(int i=0; i<count; ++i) {
                  if(local_list[i].state != STATE_TERMINATED && local_list[i].state != STATE_BLOCKED && local_list[i].state != STATE_NEW) {
                       if(local_list[i].state == STATE_READY && local_list[i].finish_time == -1) {
-                           all_accounted = 0; // Should have been selected if ready and not finished
+                           all_accounted = 0;
                            break;
                       } else if (local_list[i].state == STATE_READY && local_list[i].finish_time != -1) {
-                           // This is okay, process finished CPU but might be waiting for I/O completion event in metrics
                       }
                  }
              }
              if (all_accounted && completed_count >= count) {
-                 // If all processes that needed CPU are done, break simulation early if no time limit
                   if (max_simulation_time == -1) break;
              }
 
 
         }
 
-        // --- Execute 1 time unit if CPU busy ---
         if (current_running_idx != -1 && !preemption_occurred) {
              Process *p = &local_list[current_running_idx];
 
@@ -745,7 +724,7 @@ void schedule_priority(Process *list, int count, int preemptive, int enable_agin
 
 
              int process_stopped = 0;
-             if (p->remaining_time == 0) { // Finished CPU burst
+             if (p->remaining_time == 0) {
                  printf("%-5d | P%d TERMINOU CPU Burst\n", current_time, p->id);
                  p->state = STATE_TERMINATED;
                  p->finish_time = current_time;
@@ -757,39 +736,38 @@ void schedule_priority(Process *list, int count, int preemptive, int enable_agin
                  }
                  process_stopped = 1;
 
-             } else if (preemptive) { // Check for I/O request mid-burst (only in preemptive)
+             } else if (preemptive) {
                  if (p->io_burst_duration > 0 && p->burst_time > 1 && (rand() % (p->burst_time * 2) < 1) ) {
                        printf("%-5d | P%d iniciando I/O (%d unidades) durante execução\n", current_time, p->id, p->io_burst_duration);
                        p->state = STATE_BLOCKED; p->io_completion_time = current_time + p->io_burst_duration;
                        process_stopped = 1;
                  }
              }
-             // In non-preemptive, it only stops if burst is 0.
 
              if(process_stopped) {
                 last_process_id = p->id;
                 current_running_idx = -1;
              }
 
-        } else if (current_running_idx == -1) { // --- CPU OCIOSA ---
+        } else if (current_running_idx == -1) {
         check_idle_prio:
 
              int next_event_time = INT_MAX;
              int has_ready_process = 0;
              for (int i = 0; i < count; i++) {
-                 if(local_list[i].state == STATE_READY && local_list[i].finish_time == -1) has_ready_process = 1; // Check if ready and needs CPU
+                 if(local_list[i].state == STATE_READY && local_list[i].finish_time == -1) has_ready_process = 1;
                  if (local_list[i].state == STATE_NEW && local_list[i].arrival_time < next_event_time) next_event_time = local_list[i].arrival_time;
                  if (local_list[i].state == STATE_BLOCKED && local_list[i].io_completion_time < next_event_time) next_event_time = local_list[i].io_completion_time;
              }
 
-             if(has_ready_process) continue; // Don't idle if a process is ready for CPU
+             if(has_ready_process) continue;
 
               int idle_until;
               if (next_event_time == INT_MAX || (max_simulation_time != -1 && next_event_time >= max_simulation_time)) {
                   idle_until = (max_simulation_time != -1) ? max_simulation_time : current_time;
                   if (idle_until <= current_time) { break; }
                   printf("%-5d | CPU Ociosa até %d (Fim da Simulação ou Sem Eventos)\n", current_time, idle_until);
-                   if (next_event_time == INT_MAX && completed_count >= count) break; // Break if no more events AND all done CPU
+                   if (next_event_time == INT_MAX && completed_count >= count) break;
               } else {
                    idle_until = next_event_time;
                    printf("%-5d | CPU Ociosa até t=%d (Próximo evento)\n", current_time, idle_until);
@@ -842,7 +820,6 @@ void schedule_sjf(Process *list, int count, int max_simulation_time) {
          (void)check_io_completions(local_list, count, current_time);
 
          if (current_running_idx == -1) {
-             // Find shortest job ready process that hasn't finished CPU burst
              int shortest_idx = -1;
              int min_burst = INT_MAX;
              for (int i = 0; i < count; i++) {
@@ -899,7 +876,6 @@ void schedule_sjf(Process *list, int count, int max_simulation_time) {
                       (void)check_new_arrivals(local_list, count, current_time); (void)check_io_completions(local_list, count, current_time);
                  }
 
-                 // --- SJF: Verifica fim de execução (CORRIGIDO) ---
                  if (p->remaining_time == 0) {
                      printf("%-5d | P%d TERMINOU CPU Burst\n", current_time, p->id);
                      p->state = STATE_TERMINATED;
@@ -919,7 +895,7 @@ void schedule_sjf(Process *list, int count, int max_simulation_time) {
                  }
                  current_running_idx = -1;
 
-             } else { // No ready process needing CPU found
+             } else {
                  goto check_idle_sjf;
              }
          }
@@ -994,7 +970,6 @@ void schedule_edf_preemptive(Process *list, int count, int max_simulation_time) 
         (void)check_new_arrivals(local_list, count, current_time);
         (void)check_io_completions(local_list, count, current_time);
 
-        // Find earliest deadline ready process that hasn't finished CPU burst
         int earliest_deadline_idx = -1;
         int min_deadline = INT_MAX;
          for (int i = 0; i < count; i++) {
@@ -1025,7 +1000,6 @@ void schedule_edf_preemptive(Process *list, int count, int max_simulation_time) 
                       current_time += CONTEXT_SWITCH_COST; total_context_switches++;
                       (void)check_new_arrivals(local_list, count, current_time); (void)check_io_completions(local_list, count, current_time);
                       if (max_simulation_time != -1 && current_time >= max_simulation_time) break;
-                      // Re-check earliest deadline after CS
                        int current_best_idx = -1; min_deadline = INT_MAX;
                        for (int i = 0; i < count; i++) {
                            if (local_list[i].state == STATE_READY && local_list[i].finish_time == -1 && local_list[i].arrival_time <= current_time) {
@@ -1044,7 +1018,7 @@ void schedule_edf_preemptive(Process *list, int count, int max_simulation_time) 
                  last_process_id = p->id;
                  printf("%-5d | P%d (Deadl: %d) inicia execução (R: %d)\n", current_time, p->id, p->deadline, p->remaining_time);
 
-            } else { // CPU Busy, check preemption
+            } else {
                  Process *running_p = &local_list[current_running_idx];
                  if (earliest_deadline_idx != current_running_idx &&
                      (next_p->deadline < running_p->deadline || (next_p->deadline == running_p->deadline && next_p->arrival_time < running_p->arrival_time)))
@@ -1065,7 +1039,6 @@ void schedule_edf_preemptive(Process *list, int count, int max_simulation_time) 
                          current_time += CONTEXT_SWITCH_COST; total_context_switches++;
                          (void)check_new_arrivals(local_list, count, current_time); (void)check_io_completions(local_list, count, current_time);
                          if (max_simulation_time != -1 && current_time >= max_simulation_time) { running_p->state = STATE_READY; current_running_idx = -1; break; }
-                         // Re-check earliest deadline after CS
                          int current_best_idx = -1; min_deadline = INT_MAX;
                          for (int i = 0; i < count; i++) {
                              if (local_list[i].state == STATE_READY && local_list[i].finish_time == -1 && local_list[i].arrival_time <= current_time) {
@@ -1085,12 +1058,11 @@ void schedule_edf_preemptive(Process *list, int count, int max_simulation_time) 
                       printf("%-5d | P%d (Deadl: %d) inicia execução PREEMPTIVA (R: %d)\n", current_time, p->id, p->deadline, p->remaining_time);
                  }
             }
-        } else { // No ready process needing CPU
+        } else {
              if (current_running_idx != -1) {
                  last_process_id = local_list[current_running_idx].id;
                  current_running_idx = -1;
              }
-             // Check if all processes are accounted for
              int all_accounted = 1;
              for(int i=0; i<count; ++i) {
                   if(local_list[i].state != STATE_TERMINATED && local_list[i].state != STATE_BLOCKED && local_list[i].state != STATE_NEW) {
@@ -1104,7 +1076,6 @@ void schedule_edf_preemptive(Process *list, int count, int max_simulation_time) 
              }
         }
 
-        // --- Execute 1 time unit if CPU busy ---
         if (current_running_idx != -1 && !preemption_occurred) {
              Process *p = &local_list[current_running_idx];
              if (max_simulation_time != -1 && current_time >= max_simulation_time) {
@@ -1119,7 +1090,7 @@ void schedule_edf_preemptive(Process *list, int count, int max_simulation_time) 
              (void)check_io_completions(local_list, count, current_time);
 
              int process_stopped = 0;
-             if (p->remaining_time == 0) { // Finished CPU burst
+             if (p->remaining_time == 0) {
                  printf("%-5d | P%d TERMINOU CPU Burst\n", current_time, p->id);
                  p->state = STATE_TERMINATED;
                  p->finish_time = current_time;
@@ -1129,7 +1100,7 @@ void schedule_edf_preemptive(Process *list, int count, int max_simulation_time) 
                        p->state = STATE_BLOCKED; p->io_completion_time = current_time + p->io_burst_duration;
                   }
                  process_stopped = 1;
-             } else { // Potential I/O request mid-burst
+             } else {
                   if (p->io_burst_duration > 0 && p->burst_time > 1 && (rand() % (p->burst_time * 2) < 1)) {
                        printf("%-5d | P%d iniciando I/O (%d unidades) durante execução\n", current_time, p->id, p->io_burst_duration);
                        p->state = STATE_BLOCKED; p->io_completion_time = current_time + p->io_burst_duration;
@@ -1141,7 +1112,7 @@ void schedule_edf_preemptive(Process *list, int count, int max_simulation_time) 
                 last_process_id = p->id;
                 current_running_idx = -1;
              }
-        } else if (current_running_idx == -1) { // --- CPU OCIOSA ---
+        } else if (current_running_idx == -1) {
         check_idle_edf:
               int next_event_time = INT_MAX;
               int has_ready_process = 0;
@@ -1233,7 +1204,6 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
         int candidate_queue = -1;
         int current_quantum = 0;
 
-        // Search Q0 (RR) for ready process needing CPU
         int search_start_q0 = (last_checked_q0 + 1);
         for (int i = 0; i < count; ++i) {
             int idx = (search_start_q0 + i) % count;
@@ -1242,7 +1212,6 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
                 goto process_selected_mlq;
             }
         }
-        // Search Q1 (RR)
          int search_start_q1 = (last_checked_q1 + 1);
          for (int i = 0; i < count; ++i) {
             int idx = (search_start_q1 + i) % count;
@@ -1251,7 +1220,6 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
                 goto process_selected_mlq;
             }
         }
-        // Search Q2 (FCFS)
          int fcfs_idx = -1;
          for (int i = 0; i < count; ++i) {
               if (local_list[i].state == STATE_READY && local_list[i].finish_time == -1 && local_list[i].current_queue == 2) {
@@ -1262,7 +1230,7 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
          }
          if (fcfs_idx != -1) {
              candidate_idx = fcfs_idx; candidate_queue = 2;
-             current_quantum = local_list[candidate_idx].remaining_time; // FCFS runs full remaining burst
+             current_quantum = local_list[candidate_idx].remaining_time;
              goto process_selected_mlq;
          }
 
@@ -1273,7 +1241,7 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
         if (candidate_idx != -1) {
              Process *next_p = &local_list[candidate_idx];
 
-             if (current_running_idx == -1) { // CPU Idle
+             if (current_running_idx == -1) {
                  current_running_idx = candidate_idx; Process *p = next_p;
 
                   if (CONTEXT_SWITCH_COST > 0 && last_process_id != p->id && last_process_id != -1) {
@@ -1283,7 +1251,7 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
                      current_time += CONTEXT_SWITCH_COST; total_context_switches++;
                      (void)check_new_arrivals(local_list, count, current_time); (void)check_io_completions(local_list, count, current_time);
                      if (max_simulation_time != -1 && current_time >= max_simulation_time) break;
-                     goto process_selected_mlq; // Re-select after CS events processed
+                     goto process_selected_mlq;
                   }
 
                  p->state = STATE_RUNNING; p->time_slice_remaining = current_quantum;
@@ -1291,7 +1259,7 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
                  last_process_id = p->id;
                  printf("%-5d | P%d [Q%d] inicia execução (Qtm: %d, R: %d)\n", current_time, p->id, candidate_queue, current_quantum, p->remaining_time);
 
-             } else { // CPU Busy, check inter-queue preemption
+             } else {
                   Process *running_p = &local_list[current_running_idx];
                   if (candidate_queue < running_p->current_queue) {
                        preemption_occurred = 1;
@@ -1310,7 +1278,7 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
                            current_time += CONTEXT_SWITCH_COST; total_context_switches++;
                            (void)check_new_arrivals(local_list, count, current_time); (void)check_io_completions(local_list, count, current_time);
                            if (max_simulation_time != -1 && current_time >= max_simulation_time) { running_p->state = STATE_READY; current_running_idx = -1; break; }
-                            goto process_selected_mlq; // Re-select after CS events
+                            goto process_selected_mlq;
                        }
 
                        p->state = STATE_RUNNING; p->time_slice_remaining = current_quantum;
@@ -1319,12 +1287,11 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
                        printf("%-5d | P%d [Q%d] inicia PREEMPTIVA (Qtm: %d, R: %d)\n", current_time, p->id, candidate_queue, current_quantum, p->remaining_time);
                   }
              }
-        } else { // No ready process needing CPU
+        } else {
              if (current_running_idx != -1) {
                  last_process_id = local_list[current_running_idx].id;
                  current_running_idx = -1;
              }
-             // Check if all done
               int all_accounted = 1;
               for(int i=0; i<count; ++i) {
                    if(local_list[i].state != STATE_TERMINATED && local_list[i].state != STATE_BLOCKED && local_list[i].state != STATE_NEW) {
@@ -1338,7 +1305,6 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
               }
         }
 
-        // --- Execute 1 time unit if CPU busy ---
         if (current_running_idx != -1 && !preemption_occurred) {
             Process *p = &local_list[current_running_idx];
             if (max_simulation_time != -1 && current_time >= max_simulation_time) {
@@ -1347,7 +1313,7 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
             }
 
             current_time++; p->remaining_time--;
-            if (p->current_queue < 2) { // Decrement quantum only for RR queues
+            if (p->current_queue < 2) {
                 p->time_slice_remaining--;
             }
             printf("        P%d [Q%d] executa (R:%d, Q:%d)\n", p->id, p->current_queue, p->remaining_time, p->time_slice_remaining);
@@ -1357,7 +1323,7 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
 
 
             int process_stopped = 0;
-            if (p->remaining_time == 0) { // Finished CPU burst
+            if (p->remaining_time == 0) {
                  printf("%-5d | P%d [Q%d] TERMINOU CPU Burst\n", current_time, p->id, p->current_queue);
                  p->state = STATE_TERMINATED;
                  p->finish_time = current_time;
@@ -1367,14 +1333,14 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
                        p->state = STATE_BLOCKED; p->io_completion_time = current_time + p->io_burst_duration;
                   }
                  process_stopped = 1;
-            } else if (p->current_queue < 2 && p->time_slice_remaining == 0) { // Quantum expired for RR queues
+            } else if (p->current_queue < 2 && p->time_slice_remaining == 0) {
                  printf("%-5d | P%d [Q%d] fim do quantum, volta para READY\n", current_time, p->id, p->current_queue);
                  if (p->io_burst_duration > 0 && (rand() % 3 == 0)) {
                       printf("        P%d iniciando I/O (%d unidades) no fim do quantum\n", p->id, p->io_burst_duration);
                       p->state = STATE_BLOCKED; p->io_completion_time = current_time + p->io_burst_duration;
                  } else { p->state = STATE_READY; }
                  process_stopped = 1;
-            } else { // Potential I/O mid-burst (less common)
+            } else {
                  if (p->io_burst_duration > 0 && p->burst_time > 1 && (rand() % (p->burst_time * 3) < 1)) {
                        printf("%-5d | P%d [Q%d] iniciando I/O (%d unidades) durante execução\n", current_time, p->id, p->current_queue, p->io_burst_duration);
                        p->state = STATE_BLOCKED; p->io_completion_time = current_time + p->io_burst_duration;
@@ -1387,7 +1353,7 @@ void schedule_mlq(Process *list, int count, int base_quantum, int max_simulation
                current_running_idx = -1;
             }
 
-        } else if (current_running_idx == -1) { // --- CPU OCIOSA ---
+        } else if (current_running_idx == -1) {
              int next_event_time = INT_MAX;
              int has_ready_process = 0;
               for(int i=0; i<count; i++) {

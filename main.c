@@ -6,7 +6,6 @@
 #include "process.h"
 #include "scheduler.h"
 
-// --- Funções Auxiliares ---
 void print_usage() {
     printf("Uso: ./probsched [opções]\n");
     printf("Opções:\n");
@@ -30,7 +29,6 @@ void print_usage() {
     printf("  --io-dur <min> <max> Duração min/max para I/O bursts (padrão: 3 8)\n");
 }
 
-// --- Função para imprimir a lista de processos ---
 void print_process_list(Process* list, int count) {
     if (!list || count <= 0) return;
     printf("\n--- Lista de Processos (%d) ---\n", count);
@@ -47,7 +45,6 @@ void print_process_list(Process* list, int count) {
 
 int main(int argc, char *argv[]) {
 
-    // --- Valores Padrão ---
     char algorithm[20] = "fcfs";
     int num_processes = 10;
     int quantum = 4;
@@ -69,14 +66,13 @@ int main(int argc, char *argv[]) {
     int max_io_duration = 8;
 
 
-    // --- Parsing dos Argumentos ---
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) { print_usage(); return 0; }
         else if (strcmp(argv[i], "-a") == 0) { if (++i < argc) strncpy(algorithm, argv[i], sizeof(algorithm)-1); else { fprintf(stderr, "Erro: Faltando argumento para -a\n"); return 1;} }
-        else if (strcmp(argv[i], "-n") == 0) { if (++i < argc) num_processes = atoi(argv[i]); if(num_processes<=0) { fprintf(stderr,"Aviso: Numero de processos inválido '%s', usando N=1.\n", argv[i]); num_processes=1;} else { /* OK */ } } // Check error properly
+        else if (strcmp(argv[i], "-n") == 0) { if (++i < argc) num_processes = atoi(argv[i]); if(num_processes<=0) { fprintf(stderr,"Aviso: Numero de processos inválido '%s', usando N=1.\n", argv[i]); num_processes=1;} else {} }
         else if (strcmp(argv[i], "-f") == 0) { if (++i < argc) strncpy(input_filename, argv[i], sizeof(input_filename)-1); else { fprintf(stderr, "Erro: Faltando argumento para -f\n"); return 1;} }
         else if (strcmp(argv[i], "-t") == 0) { if (++i < argc) max_simulation_time = atoi(argv[i]); else { fprintf(stderr, "Erro: Faltando argumento para -t\n"); return 1;} }
-        else if (strcmp(argv[i], "-q") == 0) { // --- CORRIGIDO PARSING DO -q ---
+        else if (strcmp(argv[i], "-q") == 0) {
             if (++i < argc) {
                 quantum = atoi(argv[i]);
                 if (quantum <= 0) {
@@ -87,7 +83,7 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "Erro: Faltando argumento para -q\n");
                 return 1;
             }
-        } // --- FIM DA CORREÇÃO DO -q ---
+        } 
         else if (strcmp(argv[i], "-s") == 0) { if (++i < argc) { seed = atoi(argv[i]); use_fixed_seed = 1; } else { fprintf(stderr, "Erro: Faltando argumento para -s\n"); return 1;} }
         else if (strcmp(argv[i], "--gen") == 0) { if (++i < argc) strncpy(generation_mode, argv[i], sizeof(generation_mode)-1); else { fprintf(stderr, "Erro: Faltando argumento para --gen\n"); return 1;} }
         else if (strcmp(argv[i], "--burst-dist") == 0) {
@@ -117,7 +113,6 @@ int main(int argc, char *argv[]) {
     }
 
 
-    // --- Inicialização e Geração ---
     printf("--- Simulador ProbSched ---\n");
     printf("Config: Algo=%s, N=%d, Q=%d, TMax=%d, Seed=%s%d\n",
            algorithm, num_processes, quantum, max_simulation_time,
@@ -165,7 +160,6 @@ int main(int argc, char *argv[]) {
     print_process_list(process_list, actual_process_count);
 
 
-    // --- Seleção e Execução ---
     printf("\nA executar algoritmo: %s\n", algorithm);
     if (strcmp(algorithm, "fcfs") == 0) {
         schedule_fcfs(process_list, actual_process_count, max_simulation_time);
@@ -190,7 +184,6 @@ int main(int argc, char *argv[]) {
     }
 
 
-    // --- Limpeza ---
     free(process_list);
     printf("\n--- Simulação Concluída ---\n");
     return 0;
