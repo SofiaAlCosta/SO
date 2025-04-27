@@ -4,7 +4,7 @@
 #include "process.h"
 
 #define CONTEXT_SWITCH_COST 100 // FALHA PROPOSITAL
-//#define CONTEXT_SWITCH_COST 1
+//#define CONTEXT_SWITCH_COST 1 (versao correta)
 #define AGING_THRESHOLD 20
 #define AGING_INTERVAL 10
 
