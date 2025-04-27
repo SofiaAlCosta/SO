@@ -484,7 +484,7 @@ void schedule_rr(Process *list, int count, int quantum, int max_simulation_time)
             p->remaining_time--;
             p->time_slice_remaining = 0; // FALHA PROPOSITAL
             //p->time_slice_remaining--;
-            printf("        P%d executa (R:%d, Q:%d)\n", p->id, p->remaining_time, p->time_slice_remaining);
+            printf("P%d executa (R:%d, Q:%d)\n", p->id, p->remaining_time, p->time_slice_remaining);
 
 
              (void)check_new_arrivals(local_list, count, current_time);
